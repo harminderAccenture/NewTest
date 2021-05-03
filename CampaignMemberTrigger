@@ -1,0 +1,71 @@
+/***********************************************************
+* @Author       : Mark Anthony Pamintuan
+* @Date         : 29 June 2016
+* @Description  : This trigger is used to handle different events for the CampaignMember Object
+* @History      :
+ ============================================================================================================
+ Date                     Changed By                      Change Description
+ ============================================================================================================
+ 25/06/2019            Harminder Singh              RITM0025745: Input Campaign y Conversion Campaign
+ 02/07/2019            Harminder Singh              RITM0026154: Trigger Campaign del Lead y el Contact
+* *************************************************************/
+trigger CampaignMemberTrigger on CampaignMember (after delete, after insert, after undelete, 
+after update, before delete, before insert, before update) {
+
+    list<CampaignMember> registeredCampaignMembers = new list<CampaignMember>();
+    list<CampaignMember> lstPopulateIsValidEnrollment = new list<CampaignMember>();
+    
+    if(trigger.isAfter && trigger.isUpdate){
+        
+        for(CampaignMember newCampaignMember : trigger.new){
+            CampaignMember oldCampaignMember = trigger.oldMap.get(newCampaignMember.Id);
+            if(oldCampaignMember.Status != newCampaignMember.Status && newCampaignMember.Status == 'CMS014'){
+                registeredCampaignMembers.add(newCampaignMember);
+            }
+        }
+        
+        if(registeredCampaignMembers.size() > 0){
+            CampaignMemberTriggerHandler.performContactEnrollment(registeredCampaignMembers);
+        }
+        
+    }
+
+    if(trigger.isBefore && trigger.isUpdate){
+        
+        for(CampaignMember newCampaignMember : trigger.new){
+            CampaignMember oldCampaignMember = trigger.oldMap.get(newCampaignMember.Id);
+            if(oldCampaignMember.Status != newCampaignMember.Status && newCampaignMember.Status == 'CMS014'){
+                lstPopulateIsValidEnrollment.add(newCampaignMember);
+            }
+        }
+        
+        if(lstPopulateIsValidEnrollment.size() > 0){
+            CampaignMemberTriggerHandler.performContactEnrollment(registeredCampaignMembers);
+        }
+        
+    }
+    if(trigger.isBefore && trigger.isInsert){  // added for RITM0025745
+        
+        //CampaignMemberTriggerHandler.updateCampaignInput(trigger.new);
+        for (CampaignMember loopCampaignMember :trigger.new){
+        system.debug(decimal.valueof(label.Input_Campaign_Trigger_Time));
+        system.debug(decimal.valueof(label.Input_Campaign_Trigger_Time)/60); 
+        system.debug((1-(decimal.valueof(label.Input_Campaign_Trigger_Time)/60))/24);  
+        system.debug(system.now()-((1-(decimal.valueof(label.Input_Campaign_Trigger_Time)/60))/24));       
+            loopCampaignMember.Input_Campaign_Trigger_Time__c= system.now()-((1-(decimal.valueof(label.Input_Campaign_Trigger_Time)/60))/24); // Added for RITM0026154
+            /*            // commented for RITM0026154
+            if(loopCampaignMember.contactID != NULL){
+                contact con =[select id, Trigger_Campaign__c from contact where id =:loopCampaignMember.contactID limit 1];
+                if (con.Trigger_Campaign__c !=NULL){
+                    loopCampaignMember.Input_Campaign__c=con.Trigger_Campaign__c;
+                }
+            }
+            else if (loopCampaignMember.LeadID != NULL){
+                Lead led =[select id, Trigger_Campaign__c from Lead where id =:loopCampaignMember.LeadID limit 1];
+                if (led.Trigger_Campaign__c !=NULL){
+                    loopCampaignMember.Input_Campaign__c=led.Trigger_Campaign__c;
+                }
+            }*/
+        }
+    }
+}
